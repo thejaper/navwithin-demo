@@ -12,13 +12,10 @@
         h1 { font-size: 1.5rem; color: #00d4ff; }
         .tagline { color: #8b98a5; font-size: 0.85rem; }
         .map-wrapper { flex: 1; position: relative; background: #1a1f2e; border-radius: 16px; overflow: hidden; }
-        .map-canvas { width: 100%; height: 100%; position: relative; }
         #floorPlan { width: 100%; height: 100%; position: absolute; }
         .floor-label { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); background: #00d4ff; color: #0f1419; padding: 5px 15px; border-radius: 20px; font-weight: 600; font-size: 0.8rem; z-index: 10; }
         .building-name { position: absolute; top: 40px; left: 50%; transform: translateX(-50%); font-size: 0.9rem; color: #8b98a5; z-index: 10; }
         .user-dot { position: absolute; width: 30px; height: 30px; background: #00d4ff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #0f1419; font-weight: bold; z-index: 20; transform: translate(-50%, -50%); box-shadow: 0 0 20px #00d4ff, 0 0 40px rgba(0, 212, 255, 0.4); transition: all 0.2s ease; }
-        .user-dot::after { content: ''; position: absolute; width: 50px; height: 50px; border: 2px solid #00d4ff; border-radius: 50%; opacity: 0.3; animation: pulse 2s infinite; }
-        @keyframes pulse { 0% { transform: scale(1); opacity: 0.3; } 100% { transform: scale(1.5); opacity: 0; } }
         .destination-marker { position: absolute; width: 24px; height: 24px; background: #ff6b6b; border-radius: 50%; transform: translate(-50%, -50%); z-index: 15; display: flex; align-items: center; justify-content: center; font-size: 14px; }
         .controls { padding: 15px 0; display: flex; flex-direction: column; gap: 10px; }
         .status { background: #1a1f2e; padding: 12px; border-radius: 10px; text-align: center; }
@@ -74,15 +71,7 @@
         let isTracking = false;
         let posX = 50, posY = 90;
         let stepCount = 0, lastStepTime = 0;
-        const destinations = {
-            gate: { x: 50, y: 95, name: 'Main Gate' },
-            club: { x: 50, y: 30, name: 'Clubhouse' },
-            blockA: { x: 20, y: 60, name: 'Block A' },
-            blockB: { x: 80, y: 60, name: 'Block B' },
-            blockC: { x: 20, y: 40, name: 'Block C' },
-            blockD: { x: 80, y: 40, name: 'Block D' }
-        };
-        let currentDest = null;
+        const destinations = { gate: { x: 50, y: 95 }, club: { x: 50, y: 30 }, blockA: { x: 20, y: 60 }, blockB: { x: 80, y: 60 }, blockC: { x: 20, y: 40 }, blockD: { x: 80, y: 40 } };
         function drawFloorPlan() {
             const w = canvas.width = canvas.offsetWidth;
             const h = canvas.height = canvas.offsetHeight;
@@ -96,57 +85,36 @@
             ctx.fillStyle = '#1e3a5f';
             ctx.strokeStyle = '#2d4a6f';
             ctx.lineWidth = 2;
-            // Block A
             ctx.beginPath(); ctx.roundRect(gap, h * 0.52, blockW, blockH, 8); ctx.fill(); ctx.stroke();
             ctx.fillStyle = '#fff'; ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'center';
             ctx.fillText('BLOCK A', gap + blockW/2, h * 0.52 + blockH/2);
-            ctx.font = '12px sans-serif'; ctx.fillStyle = '#8b98a5';
+            ctx.fillStyle = '#8b98a5'; ctx.font = '12px sans-serif';
             ctx.fillText('Flats 101-130', gap + blockW/2, h * 0.52 + blockH/2 + 18);
-            // Block B
             ctx.fillStyle = '#1e3a5f'; ctx.beginPath(); ctx.roundRect(w - gap - blockW, h * 0.52, blockW, blockH, 8); ctx.fill(); ctx.stroke();
             ctx.fillStyle = '#fff'; ctx.fillText('BLOCK B', w - gap - blockW/2, h * 0.52 + blockH/2);
             ctx.fillStyle = '#8b98a5'; ctx.fillText('Flats 201-230', w - gap - blockW/2, h * 0.52 + blockH/2 + 18);
-            // Block C
             ctx.fillStyle = '#1e3a5f'; ctx.beginPath(); ctx.roundRect(gap, h * 0.08, blockW, blockH, 8); ctx.fill(); ctx.stroke();
             ctx.fillStyle = '#fff'; ctx.fillText('BLOCK C', gap + blockW/2, h * 0.08 + blockH/2);
             ctx.fillStyle = '#8b98a5'; ctx.fillText('Flats 301-330', gap + blockW/2, h * 0.08 + blockH/2 + 18);
-            // Block D
             ctx.fillStyle = '#1e3a5f'; ctx.beginPath(); ctx.roundRect(w - gap - blockW, h * 0.08, blockW, blockH, 8); ctx.fill(); ctx.stroke();
             ctx.fillStyle = '#fff'; ctx.fillText('BLOCK D', w - gap - blockW/2, h * 0.08 + blockH/2);
             ctx.fillStyle = '#8b98a5'; ctx.fillText('Flats 401-430', w - gap - blockW/2, h * 0.08 + blockH/2 + 18);
-            // Clubhouse
             ctx.fillStyle = '#4a2d6f'; ctx.beginPath(); ctx.roundRect(w * 0.35, h * 0.08, w * 0.3, h * 0.18, 8); ctx.fill(); ctx.stroke();
             ctx.fillStyle = '#fff'; ctx.font = 'bold 12px sans-serif'; ctx.fillText('CLUBHOUSE', w/2, h * 0.08 + h * 0.09);
-            ctx.font = '10px sans-serif'; ctx.fillStyle = '#8b98a5'; ctx.fillText('Pool • Gym • Events', w/2, h * 0.08 + h * 0.09 + 15);
-            // Gate
             ctx.fillStyle = '#2d5a4a'; ctx.fillRect(w * 0.44, h * 0.93, w * 0.12, h * 0.05);
             ctx.fillStyle = '#fff'; ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('GATE', w/2, h * 0.97);
         }
         function setDestination(key) {
-            currentDest = destinations[key];
-            destMarker.style.display = 'flex'; destMarker.style.left = currentDest.x + '%'; destMarker.style.top = currentDest.y + '%';
+            const dest = destinations[key];
+            destMarker.style.display = 'flex'; destMarker.style.left = dest.x + '%'; destMarker.style.top = dest.y + '%';
         }
         function toggleTracking() {
             isTracking = !isTracking;
-            if (isTracking) {
-                startBtn.classList.add('active'); startBtn.textContent = '■ Stop';
-                if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-                    DeviceOrientationEvent.requestPermission().then(p => {
-                        if (p === 'granted') { window.addEventListener('devicemotion', handleMotion); statusEl.textContent = 'Tracking'; }
-                    });
-                } else { window.addEventListener('devicemotion', handleMotion); statusEl.textContent = 'Tracking'; }
-            } else { startBtn.classList.remove('active'); startBtn.textContent = '▶ Start'; statusEl.textContent = 'Stopped'; }
+            if (isTracking) { startBtn.classList.add('active'); startBtn.textContent = '■ Stop'; statusEl.textContent = 'Tracking'; }
+            else { startBtn.classList.remove('active'); startBtn.textContent = '▶ Start'; statusEl.textContent = 'Stopped'; }
         }
-        function resetPosition() { posX = 50; posY = 90; stepCount = 0; currentDest = null; destMarker.style.display = 'none'; updateDisplay(); }
-        function handleMotion(event) {
-            if (!isTracking) return;
-            const acc = event.accelerationIncludingGravity;
-            if (!acc) return;
-            const now = Date.now();
-            const magnitude = Math.sqrt(acc.x * acc.x + acc.y * acc.y + acc.z * acc.z);
-            if (magnitude > 12 && now - lastStepTime > 400) { stepCount++; posY -= 1.5; if (posY < 5) posY = 5; lastStepTime = now; updateDisplay(); }
-        }
-        function updateDisplay() { userDot.style.left = posX + '%'; userDot.style.top = posY + '%'; coordsEl.textContent = `X: ${posX.toFixed(1)}% | Y: ${posY.toFixed(1)}% | Steps: ${stepCount}`; }
+        function resetPosition() { posX = 50; posY = 90; stepCount = 0; destMarker.style.display = 'none'; updateDisplay(); }
+        function updateDisplay() { userDot.style.left = posX + '%'; userDot.style.top = posY + '%'; coordsEl.textContent = 'X: ' + posX.toFixed(1) + '% | Y: ' + posY.toFixed(1) + '% | Steps: ' + stepCount; }
         window.addEventListener('resize', drawFloorPlan);
         drawFloorPlan();
     </script>
