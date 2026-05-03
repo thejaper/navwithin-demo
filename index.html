@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NavWithin - Demo</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f1419; color: white; min-height: 100vh; overflow: hidden; }
+        .container { max-width: 500px; margin: 0 auto; padding: 15px; height: 100vh; display: flex; flex-direction: column; }
+        .header { text-align: center; padding-bottom: 10px; }
+        h1 { font-size: 1.5rem; color: #00d4ff; }
+        .tagline { color: #8b98a5; font-size: 0.85rem; }
+        .map-wrapper { flex: 1; position: relative; background: #1a1f2e; border-radius: 16px; overflow: hidden; }
+        .map-canvas { width: 100%; height: 100%; position: relative; }
+        #floorPlan { width: 100%; height: 100%; position: absolute; }
+        .floor-label { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); background: #00d4ff; color: #0f1419; padding: 5px 15px; border-radius: 20px; font-weight: 600; font-size: 0.8rem; z-index: 10; }
+        .building-name { position: absolute; top: 40px; left: 50%; transform: translateX(-50%); font-size: 0.9rem; color: #8b98a5; z-index: 10; }
+        .user-dot { position: absolute; width: 30px; height: 30px; background: #00d4ff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #0f1419; font-weight: bold; z-index: 20; transform: translate(-50%, -50%); box-shadow: 0 0 20px #00d4ff, 0 0 40px rgba(0, 212, 255, 0.4); transition: all 0.2s ease; }
+        .user-dot::after { content: ''; position: absolute; width: 50px; height: 50px; border: 2px solid #00d4ff; border-radius: 50%; opacity: 0.3; animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { transform: scale(1); opacity: 0.3; } 100% { transform: scale(1.5); opacity: 0; } }
+        .destination-marker { position: absolute; width: 24px; height: 24px; background: #ff6b6b; border-radius: 50%; transform: translate(-50%, -50%); z-index: 15; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+        .controls { padding: 15px 0; display: flex; flex-direction: column; gap: 10px; }
+        .status { background: #1a1f2e; padding: 12px; border-radius: 10px; text-align: center; }
+        .status-label { font-size: 0.75rem; color: #8b98a5; }
+        .status-value { font-size: 1rem; font-weight: 600; color: #00d4ff; }
+        .buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .btn { background: #2d3548; border: none; color: white; padding: 12px 8px; border-radius: 8px; font-size: 0.85rem; cursor: pointer; transition: 0.2s; }
+        .btn:hover { background: #3d4558; }
+        .btn.active { background: #00d4ff; color: #0f1419; }
+        .btn.primary { background: #00d4ff; color: #0f1419; grid-column: span 2; font-weight: 600; }
+        .coords { font-size: 0.7rem; color: #8b98a5; text-align: center; padding: 8px; background: #1a1f2e; border-radius: 8px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>NavWithin</h1>
+            <p class="tagline">Gated Apartment Demo - Emerald County</p>
+        </div>
+        <div class="map-wrapper">
+            <div class="floor-label">Ground Floor</div>
+            <div class="building-name">4 Towers • 200 Flats</div>
+            <canvas id="floorPlan"></canvas>
+            <div class="user-dot" id="userDot" style="left: 50%; top: 90%;">📍</div>
+            <div class="destination-marker" id="destMarker" style="display: none;">🎯</div>
+        </div>
+        <div class="controls">
+            <div class="status">
+                <div class="status-label">Status</div>
+                <div class="status-value" id="sensorStatus">Tap Start to begin</div>
+            </div>
+            <div class="coords" id="coords">X: 50% | Y: 90% | Steps: 0</div>
+            <div class="buttons">
+                <button class="btn" onclick="setDestination('gate')">🏠 Gate</button>
+                <button class="btn" onclick="setDestination('club')">🏊 Club</button>
+                <button class="btn" onclick="setDestination('blockA')">Block A</button>
+                <button class="btn" onclick="setDestination('blockB')">Block B</button>
+                <button class="btn" onclick="setDestination('blockC')">Block C</button>
+                <button class="btn" onclick="setDestination('blockD')">Block D</button>
+                <button class="btn primary" id="startBtn" onclick="toggleTracking()">▶ Start Tracking</button>
+                <button class="btn" onclick="resetPosition()">↺ Reset</button>
+            </div>
+        </div>
+    </div>
+    <script>
+        const canvas = document.getElementById('floorPlan');
+        const ctx = canvas.getContext('2d');
+        const userDot = document.getElementById('userDot');
+        const destMarker = document.getElementById('destMarker');
+        const statusEl = document.getElementById('sensorStatus');
+        const coordsEl = document.getElementById('coords');
+        const startBtn = document.getElementById('startBtn');
+        let isTracking = false;
+        let posX = 50, posY = 90;
+        let stepCount = 0, lastStepTime = 0;
+        const destinations = {
+            gate: { x: 50, y: 95, name: 'Main Gate' },
+            club: { x: 50, y: 30, name: 'Clubhouse' },
+            blockA: { x: 20, y: 60, name: 'Block A' },
+            blockB: { x: 80, y: 60, name: 'Block B' },
+            blockC: { x: 20, y: 40, name: 'Block C' },
+            blockD: { x: 80, y: 40, name: 'Block D' }
+        };
+        let currentDest = null;
+        function drawFloorPlan() {
+            const w = canvas.width = canvas.offsetWidth;
+            const h = canvas.height = canvas.offsetHeight;
+            ctx.fillStyle = '#1a1f2e';
+            ctx.fillRect(0, 0, w, h);
+            const roadW = w * 0.12;
+            ctx.fillStyle = '#2d3548';
+            ctx.fillRect(w/2 - roadW/2, 0, roadW, h);
+            ctx.fillRect(0, h * 0.45, w, roadW);
+            const blockW = w * 0.32, blockH = h * 0.25, gap = w * 0.04;
+            ctx.fillStyle = '#1e3a5f';
+            ctx.strokeStyle = '#2d4a6f';
+            ctx.lineWidth = 2;
+            // Block A
+            ctx.beginPath(); ctx.roundRect(gap, h * 0.52, blockW, blockH, 8); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#fff'; ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'center';
+            ctx.fillText('BLOCK A', gap + blockW/2, h * 0.52 + blockH/2);
+            ctx.font = '12px sans-serif'; ctx.fillStyle = '#8b98a5';
+            ctx.fillText('Flats 101-130', gap + blockW/2, h * 0.52 + blockH/2 + 18);
+            // Block B
+            ctx.fillStyle = '#1e3a5f'; ctx.beginPath(); ctx.roundRect(w - gap - blockW, h * 0.52, blockW, blockH, 8); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#fff'; ctx.fillText('BLOCK B', w - gap - blockW/2, h * 0.52 + blockH/2);
+            ctx.fillStyle = '#8b98a5'; ctx.fillText('Flats 201-230', w - gap - blockW/2, h * 0.52 + blockH/2 + 18);
+            // Block C
+            ctx.fillStyle = '#1e3a5f'; ctx.beginPath(); ctx.roundRect(gap, h * 0.08, blockW, blockH, 8); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#fff'; ctx.fillText('BLOCK C', gap + blockW/2, h * 0.08 + blockH/2);
+            ctx.fillStyle = '#8b98a5'; ctx.fillText('Flats 301-330', gap + blockW/2, h * 0.08 + blockH/2 + 18);
+            // Block D
+            ctx.fillStyle = '#1e3a5f'; ctx.beginPath(); ctx.roundRect(w - gap - blockW, h * 0.08, blockW, blockH, 8); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#fff'; ctx.fillText('BLOCK D', w - gap - blockW/2, h * 0.08 + blockH/2);
+            ctx.fillStyle = '#8b98a5'; ctx.fillText('Flats 401-430', w - gap - blockW/2, h * 0.08 + blockH/2 + 18);
+            // Clubhouse
+            ctx.fillStyle = '#4a2d6f'; ctx.beginPath(); ctx.roundRect(w * 0.35, h * 0.08, w * 0.3, h * 0.18, 8); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#fff'; ctx.font = 'bold 12px sans-serif'; ctx.fillText('CLUBHOUSE', w/2, h * 0.08 + h * 0.09);
+            ctx.font = '10px sans-serif'; ctx.fillStyle = '#8b98a5'; ctx.fillText('Pool • Gym • Events', w/2, h * 0.08 + h * 0.09 + 15);
+            // Gate
+            ctx.fillStyle = '#2d5a4a'; ctx.fillRect(w * 0.44, h * 0.93, w * 0.12, h * 0.05);
+            ctx.fillStyle = '#fff'; ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('GATE', w/2, h * 0.97);
+        }
+        function setDestination(key) {
+            currentDest = destinations[key];
+            destMarker.style.display = 'flex'; destMarker.style.left = currentDest.x + '%'; destMarker.style.top = currentDest.y + '%';
+        }
+        function toggleTracking() {
+            isTracking = !isTracking;
+            if (isTracking) {
+                startBtn.classList.add('active'); startBtn.textContent = '■ Stop';
+                if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+                    DeviceOrientationEvent.requestPermission().then(p => {
+                        if (p === 'granted') { window.addEventListener('devicemotion', handleMotion); statusEl.textContent = 'Tracking'; }
+                    });
+                } else { window.addEventListener('devicemotion', handleMotion); statusEl.textContent = 'Tracking'; }
+            } else { startBtn.classList.remove('active'); startBtn.textContent = '▶ Start'; statusEl.textContent = 'Stopped'; }
+        }
+        function resetPosition() { posX = 50; posY = 90; stepCount = 0; currentDest = null; destMarker.style.display = 'none'; updateDisplay(); }
+        function handleMotion(event) {
+            if (!isTracking) return;
+            const acc = event.accelerationIncludingGravity;
+            if (!acc) return;
+            const now = Date.now();
+            const magnitude = Math.sqrt(acc.x * acc.x + acc.y * acc.y + acc.z * acc.z);
+            if (magnitude > 12 && now - lastStepTime > 400) { stepCount++; posY -= 1.5; if (posY < 5) posY = 5; lastStepTime = now; updateDisplay(); }
+        }
+        function updateDisplay() { userDot.style.left = posX + '%'; userDot.style.top = posY + '%'; coordsEl.textContent = `X: ${posX.toFixed(1)}% | Y: ${posY.toFixed(1)}% | Steps: ${stepCount}`; }
+        window.addEventListener('resize', drawFloorPlan);
+        drawFloorPlan();
+    </script>
+</body>
+</html>
