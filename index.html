@@ -11,51 +11,59 @@
         .header { text-align: center; padding-bottom: 10px; }
         h1 { font-size: 1.5rem; color: #00d4ff; }
         .tagline { color: #8b98a5; font-size: 0.85rem; }
-        .map-wrapper { flex: 1; position: relative; background: #1a1f2e; border-radius: 16px; overflow: hidden; }
+        .map-wrapper { flex: 1; position: relative; background: #1a1f2e; border-radius: 16px; overflow: hidden; touch-action: none; }
         #floorPlan { width: 100%; height: 100%; position: absolute; }
         .floor-label { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); background: #00d4ff; color: #0f1419; padding: 5px 15px; border-radius: 20px; font-weight: 600; font-size: 0.8rem; z-index: 10; }
         .building-name { position: absolute; top: 40px; left: 50%; transform: translateX(-50%); font-size: 0.9rem; color: #8b98a5; z-index: 10; }
-        .user-dot { position: absolute; width: 30px; height: 30px; background: #00d4ff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #0f1419; font-weight: bold; z-index: 20; transform: translate(-50%, -50%); box-shadow: 0 0 20px #00d4ff, 0 0 40px rgba(0, 212, 255, 0.4); transition: all 0.2s ease; }
-        .destination-marker { position: absolute; width: 24px; height: 24px; background: #ff6b6b; border-radius: 50%; transform: translate(-50%, -50%); z-index: 15; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+        .user-dot { position: absolute; width: 30px; height: 30px; background: #00d4ff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #0f1419; font-weight: bold; z-index: 20; transform: translate(-50%, -50%); box-shadow: 0 0 20px #00d4ff, 0 0 40px rgba(0, 212, 255, 0.4); transition: top 0.3s, left 0.3s; }
+        .user-dot::after { content: ''; position: absolute; width: 50px; height: 50px; border: 2px solid #00d4ff; border-radius: 50%; opacity: 0.3; animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { transform: scale(1); opacity: 0.3; } 100% { transform: scale(1.5); opacity: 0; } }
+        .destination-marker { position: absolute; width: 24px; height: 24px; background: #ff6b6b; border-radius: 50%; transform: translate(-50%, -50%); z-index: 15; display: flex; align-items: center; justify-content: center; font-size: 14px; box-shadow: 0 0 15px #ff6b6b; }
+        .path-line { position: absolute; background: #00d4ff; height: 4px; border-radius: 2px; opacity: 0.6; z-index: 10; pointer-events: none; }
+        .direction-arrow { position: absolute; background: #00d4ff; width: 16px; height: 16px; transform: translate(-50%, -50%) rotate(45deg); z-index: 25; opacity: 0; transition: opacity 0.3s; }
         .controls { padding: 15px 0; display: flex; flex-direction: column; gap: 10px; }
         .status { background: #1a1f2e; padding: 12px; border-radius: 10px; text-align: center; }
         .status-label { font-size: 0.75rem; color: #8b98a5; }
         .status-value { font-size: 1rem; font-weight: 600; color: #00d4ff; }
-        .buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .buttons { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
         .btn { background: #2d3548; border: none; color: white; padding: 12px 8px; border-radius: 8px; font-size: 0.85rem; cursor: pointer; transition: 0.2s; }
         .btn:hover { background: #3d4558; }
         .btn.active { background: #00d4ff; color: #0f1419; }
         .btn.primary { background: #00d4ff; color: #0f1419; grid-column: span 2; font-weight: 600; }
+        .btn.demo { background: #ff9500; color: #0f1419; }
         .coords { font-size: 0.7rem; color: #8b98a5; text-align: center; padding: 8px; background: #1a1f2e; border-radius: 8px; }
+        .distance { font-size: 0.8rem; color: #00d4ff; text-align: center; padding: 8px; background: #1a3a5f; border-radius: 8px; margin-top: 8px; }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
             <h1>NavWithin</h1>
-            <p class="tagline">Gated Apartment Demo - Emerald County</p>
+            <p class="tagline">Gated Apartment Demo</p>
         </div>
-        <div class="map-wrapper">
+        <div class="map-wrapper" ontouchstart="handleTap(event)" onclick="handleTap(event)">
             <div class="floor-label">Ground Floor</div>
             <div class="building-name">4 Towers • 200 Flats</div>
             <canvas id="floorPlan"></canvas>
             <div class="user-dot" id="userDot" style="left: 50%; top: 90%;">📍</div>
             <div class="destination-marker" id="destMarker" style="display: none;">🎯</div>
+            <div class="direction-arrow" id="dirArrow"></div>
         </div>
         <div class="controls">
             <div class="status">
                 <div class="status-label">Status</div>
-                <div class="status-value" id="sensorStatus">Tap Start to begin</div>
+                <div class="status-value" id="sensorStatus">Ready</div>
             </div>
-            <div class="coords" id="coords">X: 50% | Y: 90% | Steps: 0</div>
+            <div class="coords" id="coords">Position: Gate (Start)</div>
+            <div class="distance" id="distance"></div>
             <div class="buttons">
-                <button class="btn" onclick="setDestination('gate')">🏠 Gate</button>
-                <button class="btn" onclick="setDestination('club')">🏊 Club</button>
-                <button class="btn" onclick="setDestination('blockA')">Block A</button>
-                <button class="btn" onclick="setDestination('blockB')">Block B</button>
-                <button class="btn" onclick="setDestination('blockC')">Block C</button>
-                <button class="btn" onclick="setDestination('blockD')">Block D</button>
-                <button class="btn primary" id="startBtn" onclick="toggleTracking()">▶ Start Tracking</button>
+                <button class="btn" onclick="simulateNav('gate')">🏠 Gate</button>
+                <button class="btn" onclick="simulateNav('club')">🏊 Club</button>
+                <button class="btn" onclick="simulateNav('blockA')">Block A</button>
+                <button class="btn" onclick="simulateNav('blockB')">Block B</button>
+                <button class="btn" onclick="simulateNav('blockC')">Block C</button>
+                <button class="btn" onclick="simulateNav('blockD')">Block D</button>
+                <button class="btn demo" id="demoBtn" onclick="runDemo()">▶ Demo Navigation</button>
                 <button class="btn" onclick="resetPosition()">↺ Reset</button>
             </div>
         </div>
@@ -65,13 +73,26 @@
         const ctx = canvas.getContext('2d');
         const userDot = document.getElementById('userDot');
         const destMarker = document.getElementById('destMarker');
+        const dirArrow = document.getElementById('dirArrow');
         const statusEl = document.getElementById('sensorStatus');
         const coordsEl = document.getElementById('coords');
-        const startBtn = document.getElementById('startBtn');
-        let isTracking = false;
+        const distEl = document.getElementById('distance');
+        const demoBtn = document.getElementById('demoBtn');
         let posX = 50, posY = 90;
-        let stepCount = 0, lastStepTime = 0;
-        const destinations = { gate: { x: 50, y: 95 }, club: { x: 50, y: 30 }, blockA: { x: 20, y: 60 }, blockB: { x: 80, y: 60 }, blockC: { x: 20, y: 40 }, blockD: { x: 80, y: 40 } };
+        let currentDest = null;
+        let isNavigating = false;
+        let animationId = null;
+        let navInterval = null;
+        
+        const locations = {
+            gate: { x: 50, y: 90, name: 'Main Gate' },
+            club: { x: 50, y: 30, name: 'Clubhouse' },
+            blockA: { x: 20, y: 60, name: 'Block A' },
+            blockB: { x: 80, y: 60, name: 'Block B' },
+            blockC: { x: 20, y: 40, name: 'Block C' },
+            blockD: { x: 80, y: 40, name: 'Block D' }
+        };
+        
         function drawFloorPlan() {
             const w = canvas.width = canvas.offsetWidth;
             const h = canvas.height = canvas.offsetHeight;
@@ -104,17 +125,83 @@
             ctx.fillStyle = '#2d5a4a'; ctx.fillRect(w * 0.44, h * 0.93, w * 0.12, h * 0.05);
             ctx.fillStyle = '#fff'; ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('GATE', w/2, h * 0.97);
         }
-        function setDestination(key) {
-            const dest = destinations[key];
-            destMarker.style.display = 'flex'; destMarker.style.left = dest.x + '%'; destMarker.style.top = dest.y + '%';
+        
+        function simulateNav(key) {
+            if (isNavigating) { stopNavigation(); }
+            currentDest = locations[key];
+            destMarker.style.display = 'flex';
+            destMarker.style.left = currentDest.x + '%';
+            destMarker.style.top = currentDest.y + '%';
+            statusEl.textContent = 'Tap Demo to see navigation';
+            coordsEl.textContent = 'Navigate to: ' + currentDest.name;
+            distEl.textContent = '';
         }
-        function toggleTracking() {
-            isTracking = !isTracking;
-            if (isTracking) { startBtn.classList.add('active'); startBtn.textContent = '■ Stop'; statusEl.textContent = 'Tracking'; }
-            else { startBtn.classList.remove('active'); startBtn.textContent = '▶ Start'; statusEl.textContent = 'Stopped'; }
+        
+        function runDemo() {
+            if (!currentDest) { statusEl.textContent = 'Select destination first!'; return; }
+            if (isNavigating) { stopNavigation(); return; }
+            isNavigating = true;
+            demoBtn.classList.add('active');
+            demoBtn.textContent = '⏹ Stop';
+            statusEl.textContent = 'Navigating...';
+            let startX = posX, startY = posY;
+            let endX = currentDest.x, endY = currentDest.y;
+            let steps = 30;
+            let currentStep = 0;
+            let startTime = Date.now();
+            navInterval = setInterval(() => {
+                currentStep++;
+                let progress = currentStep / steps;
+                posX = startX + (endX - startX) * progress;
+                posY = startY + (endY - startY) * progress;
+                userDot.style.left = posX + '%';
+                userDot.style.top = posY + '%';
+                dirArrow.style.opacity = '1';
+                let angle = Math.atan2(endX - startX, endY - startY) * 180 / Math.PI + 90;
+                dirArrow.style.left = (posX + 5) + '%';
+                dirArrow.style.top = posY + '%';
+                dirArrow.style.transform = 'translate(-50%, -50%) rotate(' + angle + 'deg)';
+                let elapsed = (Date.now() - startTime) / 1000;
+                distEl.textContent = 'Walking... ' + Math.round(elapsed) + 's';
+                if (currentStep >= steps) {
+                    stopNavigation();
+                    statusEl.textContent = 'Arrived at ' + currentDest.name + '!';
+                    distEl.textContent = '✅ You have arrived!';
+                }
+            }, 100);
         }
-        function resetPosition() { posX = 50; posY = 90; stepCount = 0; destMarker.style.display = 'none'; updateDisplay(); }
-        function updateDisplay() { userDot.style.left = posX + '%'; userDot.style.top = posY + '%'; coordsEl.textContent = 'X: ' + posX.toFixed(1) + '% | Y: ' + posY.toFixed(1) + '% | Steps: ' + stepCount; }
+        
+        function stopNavigation() {
+            isNavigating = false;
+            clearInterval(navInterval);
+            demoBtn.classList.remove('active');
+            demoBtn.textContent = '▶ Demo Navigation';
+            dirArrow.style.opacity = '0';
+        }
+        
+        function handleTap(event) {
+            if (isNavigating) { return; }
+            const rect = event.target.getBoundingClientRect();
+            const x = ((event.clientX || event.touches[0].clientX) - rect.left) / rect.width * 100;
+            const y = ((event.clientY || event.touches[0].clientY) - rect.top) / rect.height * 100;
+            posX = x; posY = y;
+            userDot.style.left = posX + '%';
+            userDot.style.top = posY + '%';
+            coordsEl.textContent = 'Position: ' + Math.round(x) + '% , ' + Math.round(y) + '%';
+        }
+        
+        function resetPosition() {
+            stopNavigation();
+            posX = 50; posY = 90;
+            currentDest = null;
+            destMarker.style.display = 'none';
+            userDot.style.left = '50%';
+            userDot.style.top = '90%';
+            statusEl.textContent = 'Ready';
+            coordsEl.textContent = 'Position: Gate (Start)';
+            distEl.textContent = '';
+        }
+        
         window.addEventListener('resize', drawFloorPlan);
         drawFloorPlan();
     </script>
